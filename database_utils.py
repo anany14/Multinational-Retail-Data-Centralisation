@@ -25,13 +25,13 @@ class DatabaseConnector:
             table_names = [table[0] for table in tables]
         return table_names
     
-    def upload_to_db(self,cleaned_data,table_name='dim_users'):
-        
-        new_engine = create_engine(f"postgresql+psycopg2://postgres:wuMBRELLA!2@localhost:5432/sales_data")
-        connection = new_engine.connect()
-        cleaned_data.to_sql(table_name, connection, if_exists='replace', index=False)
-        connection.close()
+    def upload_to_db(self,cleaned_data,table_name):
 
+        with open('pass.yaml', 'r') as t: # Load the credentials from the YAML file
+            pas = yaml.safe_load(t) 
+        new_engine = create_engine(f"postgresql+psycopg2://postgres:{pas['PASS']}@localhost:5432/sales_data")
+        cleaned_data.to_sql(table_name, new_engine, if_exists='replace', index=False)
+        
 
 db_connector = DatabaseConnector()
 creds = db_connector.read_db_creds()
@@ -49,11 +49,11 @@ datacleaning = DataCleaning()
 cleaned_data = datacleaning.clean_user_data(df)
 print(cleaned_data.head())
 
-#db_connector.upload_to_db(cleaned_data, table_name='dim_users')
+db_connector.upload_to_db(cleaned_data, table_name='dim_users')
 
 pdf_df = dataextractor.retrieve_pdf_data()
 clean_card_df = datacleaning.clean_card_data(pdf_df)
 print(clean_card_df.head())
 print(clean_card_df.describe())
 print(clean_card_df.info())
-#db_connector.upload_to_db(clean_card_df, table_name='dim_card_details')
+db_connector.upload_to_db(clean_card_df, table_name='dim_card_details')
