@@ -1,3 +1,6 @@
 #ignoring the test file
 test.ipynb
+#removing password
 pass.yaml
+#removing all csv files
+.csv
