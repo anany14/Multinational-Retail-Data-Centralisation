@@ -2,5 +2,4 @@
 test.ipynb
 #removing password
 pass.yaml
-#removing all csv files
-.csv
+

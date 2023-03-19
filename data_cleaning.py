@@ -1,27 +1,80 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import re
 
 class DataCleaning:
     def __init__(self):
         pass
 
     def clean_user_data(self,user_df):
-        # Drop the 'index' column
+        #dropping index and unnamed column
         user_df.drop('index', axis=1, inplace=True)
-        # Convert 'date_of_birth' column to datetime format
+
+        # Convert 'date_of_birth' and 'join_date' columns to datetime format
         user_df['date_of_birth'] = pd.to_datetime(user_df['date_of_birth'], format='%Y-%m-%d', errors='coerce')
-        # Convert 'join_date' column to datetime format
-        user_df['join_date'] = pd.to_datetime(user_df['join_date'], format = '%Y-%m-%d', errors='coerce')
-        # Drop rows with null values in important columns
-        user_df.dropna(subset=['first_name', 'last_name', 'date_of_birth', 'email_address'], inplace=True)
-        # Convert 'phone_number' column to integer
-        user_df['phone_number'] = pd.to_numeric(user_df['phone_number'], errors='coerce')
-        # Drop rows with incorrect types in important columns
-        user_df = user_df[pd.to_numeric(user_df['phone_number'], errors='coerce').notnull()]
-        user_df = user_df[pd.to_datetime(user_df['join_date'], errors='coerce').notnull()]
-        # Reset index after dropping rows
-        user_df.reset_index(drop=True, inplace=True)
+        user_df['join_date'] = pd.to_datetime(user_df['join_date'], format='%Y-%m-%d', errors='coerce')
+
+        # Drop rows where format is incorrect or date_of_birth is after join_date
+        user_df.dropna(subset=['date_of_birth', 'join_date'], inplace=True)
+        user_df = user_df[user_df['join_date'] >= user_df['date_of_birth']]
+        # checking to see if no joining date is in the future
+        today = datetime.today()
+        user_df = user_df[user_df['join_date'] < today]
+
+        # Strip names of any trailing whitespace
+        user_df['email_address'] = user_df['email_address'].str.strip()
+        user_df['first_name'] = user_df['first_name'].str.strip()
+        user_df['last_name'] = user_df['last_name'].str.strip()
+
+        # Replace @@ in the email addresses with single @
+        user_df['email_address'] = user_df['email_address'].str.replace('@@', '@')
+        # Check that all emails are in the correct format
+        email_pattern = r'^[\w\.-]+@[\w\.-]+\.[a-zA-Z]{2,}$'
+        user_df = user_df[user_df['email_address'].str.match(email_pattern)]
+
+        # Replace . in first names with an empty string
+        user_df['first_name'] = user_df['first_name'].str.replace('.', '')
+        # individualised Name pattern as some names contain German letters and some ' in last names
+        name_pattern = r'^[A-Za-zäöüÄÖÜßé\-\'\ ]+$'
+        user_df = user_df[user_df['first_name'].str.match(name_pattern) & user_df['last_name'].str.match(name_pattern)]
+
+        #country and country_code and company to category
+        user_df['country'] = user_df['country'].astype('category')
+        user_df['country_code'] = user_df['country_code'].astype('category')
+        user_df['company'] = user_df['company'].astype('category')
+
+        # Replace \n in the addresses with a space
+        user_df['address'] = user_df['address'].replace('\n', ' ', regex=True)
+        user_df['address'] = user_df['address'].str.strip()
+
+        #removing () from phone numbers
+        user_df['phone_number'] = user_df['phone_number'].str.replace(r'\(|\)', '')
+        #removing country codes from phone numbers
+        user_df['phone_number'] = user_df['phone_number'].str.replace(r'\+44|\+1|\+49','')
+        #after removing the prefixes, i am adding them again to make sure there was no mistakes in the numbers
+        # Define the function to map the country code to the phone prefix
+        def get_phone_prefix(country_code):
+            if country_code == 'GB':
+                return '+44 '
+            elif country_code == 'US':
+                return '+1 '
+            elif country_code == 'DE':
+                return '+49 '
+            else:
+                return ''
+
+        # Apply the function to create the 'phone_prefix' column
+        user_df['phone_prefix'] = user_df['country_code'].apply(get_phone_prefix)
+
+        # Add the 'phone_prefix' column to the 'phone_number' column
+        user_df['phone_number'] = user_df['phone_prefix'].astype(str) + user_df['phone_number'].astype(str)
+
+        #dropping the phone_prefix column 
+        user_df = user_df.drop('phone_prefix', axis=1)
+
+        #dropping any rows will null values
+        user_df = user_df.dropna()
 
         return user_df
 
@@ -30,18 +83,141 @@ class DataCleaning:
         
         #dropping any rows will null values
         card_df = card_df.dropna()
+
         #removing any columns with erroneous values
         card_df = card_df[~card_df['card_number'].astype(str).str.contains('[^0-9]')]
         card_df = card_df[~card_df['card_provider'].str.contains('[^a-zA-Z0-9 /]')]
+
         #cleaing up any formatting issues in expiry_date column
         card_df['expiry_date'] = pd.to_datetime(card_df['expiry_date'], format='%m/%y', errors='coerce')
         card_df = card_df.dropna()
+        # removing cards which are expired
+        card_df = card_df[card_df['expiry_date'] < datetime.today()] 
+
         # Clean up formatting errors in date_payment_confirmed column
         card_df['date_payment_confirmed'] = pd.to_datetime(card_df['date_payment_confirmed'], format='%Y-%m-%d', errors='coerce')
         card_df = card_df.dropna()
+
         # Convert the 'card_number' column to the Int64 data type
         card_df['card_number'] = pd.to_numeric(card_df['card_number'], errors='coerce').astype('Int64')
+
         #convert card_provider column to category data type
         card_df['card_provider'] = card_df['card_provider'].fillna('Unknown').astype('category')
 
         return card_df
+    
+
+
+    def clean_store_data(self,stores_df):
+
+        #storing row 0 as a separate df because its the only web portal and unique
+        row_0 = stores_df.loc[0]
+
+        # checking to make sure all the store codes are in the correct form
+        pattern = r'^[A-Z]{2,3}-[A-Z0-9]{6,8}$'
+        stores_df = stores_df[stores_df['store_code'].astype('str').str.match(pattern)]
+
+        #adding row 0 now
+        stores_df = pd.concat([row_0.to_frame().T, stores_df]).reset_index(drop=True)
+
+        stores_df.drop('lat', axis=1,inplace=True)
+        stores_df.drop('index', axis=1,inplace=True)
+
+        #converting to correct datetime format
+        stores_df['opening_date'] = pd.to_datetime(stores_df['opening_date'],format='%Y-%m-%d',errors='coerce')
+
+        #converting the column country_code,locality, continent and store_type into a category
+        stores_df['locality'] = stores_df['locality'].astype('category')
+        stores_df['country_code'] = stores_df['country_code'].astype('category')
+        stores_df['continent'] = stores_df['continent'].astype('category')
+        stores_df['store_type'] = stores_df['store_type'].astype('category')
+        #stores_df['staff_numbers'] = stores_df['staff_numbers'].astype('int')
+        stores_df['staff_numbers'] = pd.to_numeric(stores_df['staff_numbers'], errors='coerce')
+
+        # Convert longitude and latitude columns to numeric
+        stores_df['longitude'] = pd.to_numeric(stores_df['longitude'], errors='coerce')
+        stores_df['latitude'] = pd.to_numeric(stores_df['latitude'], errors='coerce')
+        #stores_df = (stores_df['longitude'].astype('float') >= -180) & (stores_df['longitude'].astype('float') <= 180)
+        #stores_df = (stores_df['latitude'].astype('float') >= -90) & (stores_df['latitude'].astype('float') <= 90)
+
+        # Replace \n in the addresses with a space
+        stores_df['address'] = stores_df['address'].astype('str').replace('\n', ' ', regex=True)
+        stores_df['address'] = stores_df['address'].str.strip()
+
+        return stores_df
+    
+
+    def clean_products_data(self,products_df):
+
+        #using product code to remove all the unnecessary rows
+        products_df['product_code'] = products_df['product_code'].astype(str)
+        products_df['product_code'] = products_df['product_code'].str.upper()
+        product_code_pattern = r'^[A-Z0-9]{2}-[A-Z0-9]{6,8}$'
+        products_df = products_df[products_df['product_code'].str.match(product_code_pattern)]
+
+        #weight column cleaned and converted to float
+        products_df = products_df.rename(columns={'product_price': 'product_price(£)'})
+        products_df['product_price(£)'] = products_df['product_price(£)'].str.replace("£","")
+        products_df['product_price(£)'] = pd.to_numeric(products_df['product_price(£)'],errors='coerce')
+
+        products_df['category'] = products_df['category'].astype('category')
+        products_df['date_added'] = pd.to_datetime(products_df['date_added'],format='%Y-%m-%d',errors='coerce')
+
+        # Rename the column to "still_available"
+        products_df = products_df.rename(columns={'removed': 'still_available'})
+        # Replace "Still_available" values with True and "Removed" values with False
+        products_df['still_available'] = products_df['still_available'].replace({'Still_avaliable': True, 'Removed': False})
+        products_df['still_available'] = products_df['still_available'].astype(bool)
+
+        products_df.drop('Unnamed: 0',axis=1,inplace=True)
+
+        return products_df
+
+
+    def convert_product_weights(self,products_df):
+
+        products_df['weight'] = products_df['weight'].astype('str')
+        for idx, row in products_df.iterrows():
+            weight = re.sub('[^0-9.]', '', row['weight'])
+            if 'kg' in row['weight']:
+                weight = float(weight)
+            elif 'ml' in row['weight']:
+                weight = float(weight) / 1000
+            elif 'g' in row['weight']:
+                weight = float(weight) / 1000
+            elif 'oz' in row['weight']:
+                weight = float(weight) / 35.72
+            products_df.at[idx, 'weight'] = weight
+        products_df = products_df.rename(columns={'weight':'weight(kg)'})
+
+        return products_df
+
+    def clean_orders_data(self,orders_df):
+
+        orders_df.drop('first_name',axis=1,inplace=True)
+        orders_df.drop('last_name',axis=1,inplace=True)
+        orders_df.drop('1',axis=1,inplace=True)
+        orders_df.drop('level_0',axis=1,inplace=True)
+        orders_df.drop('index',axis=1,inplace=True)
+        orders_df['card_number'] = pd.to_numeric(orders_df['card_number'])
+        orders_df['product_quantity'] = pd.to_numeric(orders_df['product_quantity'])
+        orders_df['product_code'] = orders_df['product_code'].str.upper()
+        store_code_pattern = r'^[A-Z]{2,3}-[A-Z0-9]{5,8}$'
+        orders_df = orders_df[orders_df['store_code'].astype('str').str.match(store_code_pattern)]
+        product_code_pattern = r'^[A-Z0-9]{2}-[A-Z0-9]{6,8}$'
+        orders_df = orders_df[orders_df['product_code'].str.match(product_code_pattern)]
+
+        return orders_df
+    
+
+    def clean_events(self,events_df):
+
+        events_df = events_df[~pd.to_numeric(events_df['month'], errors='coerce').isna()]
+        events_df['DateTime'] = pd.to_datetime(events_df['year'].astype(str) + '-' + events_df['month'].astype(str) + '-' + events_df['day'].astype(str) + ' ' + events_df['timestamp'])
+        events_df['time_period'] = events_df['time_period'].astype('category')
+        events_df.drop('timestamp',axis=1,inplace=True)
+        events_df.drop('month',axis=1,inplace=True)
+        events_df.drop('year',axis=1,inplace=True)
+        events_df.drop('day',axis=1,inplace=True)
+
+        return events_df
