@@ -67,5 +67,3 @@ db_connector.upload_to_db(orders_table,table_name='orders_table')   #m2t7
 events_df = dataextractor.extract_timestamp()
 dim_date_times = datacleaning.clean_events(events_df)
 db_connector.upload_to_db(dim_date_times,table_name='dim_date_times') #m2t8
-
-print('i worked')

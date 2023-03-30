@@ -20,9 +20,9 @@ class DataExtractor:
 
     def retrieve_pdf_data(self,link="https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf"):
         
-        pdf_dfs = tabula.read_pdf(link,pages='all')
+        pdf_dfs = tabula.read_pdf(link,pages='all',multiple_tables=False, stream=True)
         pdf_df = pd.concat(pdf_dfs)  #as tabula returns a list of pandas dataframe which is 1 df every page of the pdf
-        
+        print(pdf_df.head())
         return pdf_df   #we use concat to merge all the list of dfs into a single df
     
     def list_number_of_stores(self,endpoint='https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores',header={'x-api-key' :'yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX'}):

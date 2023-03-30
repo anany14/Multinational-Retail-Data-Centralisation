@@ -41,6 +41,7 @@ class DataCleaning:
 
         #country and country_code and company to category
         user_df['country'] = user_df['country'].astype('category')
+        user_df['country_code'] = user_df['country_code'].str.replace('GGB','GB')
         user_df['country_code'] = user_df['country_code'].astype('category')
         user_df['company'] = user_df['company'].astype('category')
 
@@ -81,25 +82,17 @@ class DataCleaning:
 
     def clean_card_data(self,card_df):
         
-        #dropping any rows will null values
-        card_df = card_df.dropna()
-
         #removing any columns with erroneous values
-        card_df = card_df[~card_df['card_number'].astype(str).str.contains('[^0-9]')]
-        card_df = card_df[~card_df['card_provider'].str.contains('[^a-zA-Z0-9 /]')]
+        card_df = card_df[~card_df['card_number'].astype(str).str.contains('[^0-9 ]')]
 
         #cleaing up any formatting issues in expiry_date column
         card_df['expiry_date'] = pd.to_datetime(card_df['expiry_date'], format='%m/%y', errors='coerce')
-        card_df = card_df.dropna()
+        
         # removing cards which are expired
-        card_df = card_df[card_df['expiry_date'] < datetime.today()] 
+        #card_df = card_df[card_df['expiry_date'] < datetime.today()] 
 
         # Clean up formatting errors in date_payment_confirmed column
         card_df['date_payment_confirmed'] = pd.to_datetime(card_df['date_payment_confirmed'], format='%Y-%m-%d', errors='coerce')
-        card_df = card_df.dropna()
-
-        # Convert the 'card_number' column to the Int64 data type
-        card_df['card_number'] = pd.to_numeric(card_df['card_number'], errors='coerce').astype('Int64')
 
         #convert card_provider column to category data type
         card_df['card_provider'] = card_df['card_provider'].fillna('Unknown').astype('category')
@@ -110,15 +103,9 @@ class DataCleaning:
 
     def clean_store_data(self,stores_df):
 
-        #storing row 0 as a separate df because its the only web portal and unique
-        row_0 = stores_df.loc[0]
-
         # checking to make sure all the store codes are in the correct form
         pattern = r'^[A-Z]{2,3}-[A-Z0-9]{6,8}$'
         stores_df = stores_df[stores_df['store_code'].astype('str').str.match(pattern)]
-
-        #adding row 0 now
-        stores_df = pd.concat([row_0.to_frame().T, stores_df]).reset_index(drop=True)
 
         stores_df.drop('lat', axis=1,inplace=True)
         stores_df.drop('index', axis=1,inplace=True)
@@ -131,7 +118,6 @@ class DataCleaning:
         stores_df['country_code'] = stores_df['country_code'].astype('category')
         stores_df['continent'] = stores_df['continent'].astype('category')
         stores_df['store_type'] = stores_df['store_type'].astype('category')
-        #stores_df['staff_numbers'] = stores_df['staff_numbers'].astype('int')
         stores_df['staff_numbers'] = pd.to_numeric(stores_df['staff_numbers'], errors='coerce')
 
         # Convert longitude and latitude columns to numeric
