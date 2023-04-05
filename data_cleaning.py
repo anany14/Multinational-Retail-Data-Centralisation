@@ -8,6 +8,24 @@ class DataCleaning:
         pass
 
     def clean_user_data(self,user_df):
+
+        uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        user_df['user_uuid'] = user_df['user_uuid'].astype(str)
+        user_df = user_df[user_df['user_uuid'].str.match(uuid_pattern)]
+        user_df['country_code'] = user_df['country_code'].astype('category')
+        user_df['country_code'].unique()
+        user_df.drop('index',axis=1,inplace=True)
+        user_df['date_of_birth'] = pd.to_datetime(user_df['date_of_birth'],format='%Y-%m-%d',errors='coerce')
+        user_df['join_date'] = pd.to_datetime(user_df['join_date'],format='%Y-%m-%d',errors='coerce')
+        user_df['email_address'] = user_df['email_address'].str.replace('@@','@',regex=True)
+        user_df['address'] = user_df['address'].str.replace('\n','',regex=True)
+        user_df['country'] = user_df['country'].astype('category')
+        user_df['country_code'] = user_df['country_code'].str.replace('GGB','GB',regex=True)
+        user_df['country_code'] = user_df['country_code'].astype('category')
+        user_df['company'] = user_df['company'].astype('category')
+
+
+        """
         #dropping index and unnamed column
         user_df.drop('index', axis=1, inplace=True)
 
@@ -16,11 +34,11 @@ class DataCleaning:
         user_df['join_date'] = pd.to_datetime(user_df['join_date'], format='%Y-%m-%d', errors='coerce')
 
         # Drop rows where format is incorrect or date_of_birth is after join_date
-        user_df.dropna(subset=['date_of_birth', 'join_date'], inplace=True)
-        user_df = user_df[user_df['join_date'] >= user_df['date_of_birth']]
+        #user_df.dropna(subset=['date_of_birth', 'join_date'], inplace=True)
+        #user_df = user_df[user_df['join_date'] >= user_df['date_of_birth']]
         # checking to see if no joining date is in the future
-        today = datetime.today()
-        user_df = user_df[user_df['join_date'] < today]
+        #today = datetime.today()
+        #user_df = user_df[user_df['join_date'] < today]
 
         # Strip names of any trailing whitespace
         user_df['email_address'] = user_df['email_address'].str.strip()
@@ -36,8 +54,8 @@ class DataCleaning:
         # Replace . in first names with an empty string
         user_df['first_name'] = user_df['first_name'].str.replace('.', '')
         # individualised Name pattern as some names contain German letters and some ' in last names
-        name_pattern = r'^[A-Za-zäöüÄÖÜßé\-\'\ ]+$'
-        user_df = user_df[user_df['first_name'].str.match(name_pattern) & user_df['last_name'].str.match(name_pattern)]
+        #name_pattern = r'^[A-Za-zäöüÄÖÜßé\-\'\ ]+$'
+        #user_df = user_df[user_df['first_name'].str.match(name_pattern) & user_df['last_name'].str.match(name_pattern)]
 
         #country and country_code and company to category
         user_df['country'] = user_df['country'].astype('category')
@@ -76,28 +94,29 @@ class DataCleaning:
 
         #dropping any rows will null values
         user_df = user_df.dropna()
+        """
 
         return user_df
 
 
     def clean_card_data(self,card_df):
         
-        #removing any columns with erroneous values
-        card_df = card_df[~card_df['card_number'].astype(str).str.contains('[^0-9 ]')]
-
-        #cleaing up any formatting issues in expiry_date column
         card_df['expiry_date'] = pd.to_datetime(card_df['expiry_date'], format='%m/%y', errors='coerce')
-        
-        # removing cards which are expired
-        #card_df = card_df[card_df['expiry_date'] < datetime.today()] 
-
-        # Clean up formatting errors in date_payment_confirmed column
-        card_df['date_payment_confirmed'] = pd.to_datetime(card_df['date_payment_confirmed'], format='%Y-%m-%d', errors='coerce')
-
-        #convert card_provider column to category data type
+        card_df['date_payment_confirmed'] = pd.to_datetime(card_df['date_payment_confirmed'],format='%Y-%m-%d', errors='coerce')
         card_df['card_provider'] = card_df['card_provider'].fillna('Unknown').astype('category')
-
-        return card_df
+        mask = card_df['card_provider'].isin(['Diners Club / Carte Blanche', 'American Express', 'JCB 16 digit','JCB 15 digit', 'Maestro', 'Mastercard', 'Discover','VISA 19 digit', 'VISA 16 digit', 'VISA 13 digit'])
+        card_df = card_df.loc[mask]
+        card_df['card_number'] = card_df['card_number'].astype(str)
+        card_df['card_number'] = card_df['card_number'].str.replace('?','',regex=True)
+        fix = card_df[card_df['card_number'].str.contains('[^0-9 ]')]
+        card_df = card_df[~card_df['card_number'].str.contains('[^0-9 ]')]
+        fix['expiry_date'] = fix['card_number'].str[-5:]
+        fix['card_number'] = fix['card_number'].str[:-6]
+        merge = pd.concat([card_df,fix],ignore_index=True)
+        merge['expiry_date'] = pd.to_datetime(merge['expiry_date'], format='%m/%y', errors='coerce')
+        merge['date_payment_confirmed'] = pd.to_datetime(merge['date_payment_confirmed'],format='%Y-%m-%d', errors='coerce')
+        
+        return merge
     
 
 

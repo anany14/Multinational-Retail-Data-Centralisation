@@ -85,7 +85,7 @@ ALTER COLUMN date_uuid TYPE uuid USING date_uuid::uuid;
 --m3t7
 ALTER TABLE dim_card_details
 ALTER COLUMN card_number TYPE VARCHAR(19),
-ALTER COLUMN expiry_date TYPE DATE,
+ALTER COLUMN expiry_date TYPE DATE USING expiry_date::date,
 ALTER COLUMN date_payment_confirmed TYPE DATE;
 ALTER TABLE dim_card_details
 ALTER COLUMN expiry_date TYPE VARCHAR(10);
@@ -123,6 +123,10 @@ ALTER TABLE orders_table
 ADD CONSTRAINT fk_store_code
 FOREIGN KEY (store_code)
 REFERENCES dim_store_details (store_code);
+ALTER TABLE orders_table
+ADD CONSTRAINT fk_card_number
+FOREIGN KEY (card_number)
+REFERENCES dim_card_details (card_number);
 
 --not working
 ALTER TABLE orders_table
@@ -130,11 +134,8 @@ ADD CONSTRAINT fk_user_uuid
 FOREIGN KEY (user_uuid)
 REFERENCES dim_users (user_uuid);
 
--- not working
-ALTER TABLE orders_table
-ADD CONSTRAINT fk_card_number
-FOREIGN KEY (card_number)
-REFERENCES dim_card_details (card_number);
+
+
 
 
 

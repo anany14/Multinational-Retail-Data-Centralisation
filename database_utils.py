@@ -42,11 +42,15 @@ engine = db_connector.init_db_engine(creds)
 table_names = db_connector.list_db_tables(engine)
 user_table = [name for name in table_names if "user" in name][0]
 user_df = dataextractor.read_rds_table(engine,user_table)
+user_df.to_csv('user_unclean.csv')
 dim_users = datacleaning.clean_user_data(user_df)
+dim_users.to_csv('user_clean.csv')
 db_connector.upload_to_db(dim_users, table_name='dim_users')   #m2t3
 
 pdf_df = dataextractor.retrieve_pdf_data()
+pdf_df.to_csv('unclean_card.csv')
 dim_card_details = datacleaning.clean_card_data(pdf_df)
+dim_card_details.to_csv('clean_card.csv')
 db_connector.upload_to_db(dim_card_details, table_name='dim_card_details')   #m2t4
 
 number_of_stores = dataextractor.list_number_of_stores()
