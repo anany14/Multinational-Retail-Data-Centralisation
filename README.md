@@ -1,128 +1,147 @@
-# Multinational-Retail-Data-Centralisation
+# Multinational Retial-Data Centralization
 
 The goal of the project is to create a system that centralizes the multinational company's sales data, making it easily accessible and analyzable by the team. This involves storing the company's sales data in a database using postgreSQL and Python, the database will serve as the single source of truth for sales data. Once the database is set up, the team will be able to query it to obtain up-to-date metrics that will inform their decision-making processes and help them become more data-driven. Ultimately, the project aims to improve the company's efficiency and effectiveness in managing and analyzing its sales data.
 
+## Installation
+
+1. Clone this repository to your local machine using `git clone https://github.com/<username>/multinational-sales-data-centralization.git`
+2. Ensure that you have Python 3.8 or higher installed
+3. Ensure that you have PostgreSQL installed 
+
+## Usage
+
+1. Run `python database_utils.py` to create the necessary database tables in the PostgreSQL server. This script requires that you have access to a PostgreSQL server and have provided the necessary credentials. The other 2 scripts are imported in this script as this is the main script and the only one you need to run. 
+2. `python data_extraction.py` extracts data from the various data sources. This script requires that you have access to the necessary data sources. Data extraction methods were created in this script to extract data from different sources such as CSV files, an API, and an S3 bucket. The methods contained are tailored to extract data from a specific data source.
+3. `python data_cleaning.py` cleans and transforms the data in the database. This script standardizes data formats and removes duplicates or irrelevant information, making the data more usable for analysis.
+4. Use the SQL query `sales_data_sessions.sql` to query the database and obtain up-to-date metrics for the business. This script contains queries to extract sales data by country, product, and time period.
+
+## Files
+
+- `database_utils.py`: Contains functions to create, connect and upload to the PostgreSQL database, as well as create the necessary tables in the database.
+- `data_extraction.py`: Contains functions to extract data from various data sources.
+- `data_cleaning.py`: Contains functions to clean and transform the data in the PostgreSQL database.
+- `sales_data_sessions.sql`: Contains SQL queries to obtain sales data from the PostgreSQL database.
+
+## Dependencies
+
+- `psycopg2`: PostgreSQL adapter for the Python programming language.
+- `pandas`: Data manipulation library for Python.
+- `sqlalchemy`: SQL toolkit and Object-Relational Mapping (ORM) library for Python.
+
+## Contributing
+
+This project is not currently accepting contributions.
+
+## License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details.
+
+
 ## Milestone 1: Set-up GitHub Repo
 
-## Milestone 2: Extracting and Cleaning the data from different sources
+## Milestone 2: Extracted and Cleaned the data from different sources
 
-### Task 1: Set up a Database called **"sales_data"** using *pgadmin4*
+## Milestone 3: Created the Database Schema : Developed a STAR Based Schema of the Database, ensuring that the columns are of the correct types. 
 
-### Task 2: Initialised 3 Project Classes -
+## Milestone 4: Queried the data to answer questions such as - 
+### How Many stores does the store have and in which countries?
+| country_code  | total_no_stores |
+|-------|-----|
+| GB  | 265  |
+| DE | 141  |
+| US  | 34  |
+| NULL | 1  |
 
-**DataExtractor** - This class was created in the **data_extraction.py** script. Data extraction methods were created in this class to extract data from different sources such as CSV files, an API, and an S3 bucket. The methods contained are tailored to extract data from a specific data source. This class was used as a utility class.
+1 of the stores is a Web Portal 
 
-**DataCleaning** - This class was created in the **data_cleaning.py** script. This class was used to clean the data extracted.
+### Which Locations currently have the most stores? 
 
-**DatabaseConnector** - This class was created in the **database_utils.py** script. This class was used to connect and upload data to the database.
+|     locality      | total_no_stores |
+|-------------------|-----------------|
+| Chapletown        |              14 |
+| Belper            |              13 |
+| Bushley           |              12 |
+| Exeter            |              11 |
+| High Wycombe      |              10 |
+| Arbroath          |              10 |
+| Rutherglen        |              10 |
 
-### Task 3: Extracting and cleaning data
+### Which Months produce the average highest cost of sales typically? 
 
-Used all the 3 scripts to extract data from an AWS RDS Database.
+| total_sales | month |
+|-------------|-------|
+|673295.67999 |     8 |
+|668041.44999 |     1 |
+|657335.83999 |    10 |
+|650321.42999 |     5 |
+|645741.69999 |     7 |
+|645462.99999 |     3 |
+|635578.98999 |     6 |
+|635329.08999 |    12 |
+|633993.61999 |     9 |
+|630757.07999 |    11 |
 
-**Step 1:** I stored the AWS credentials of the in the file **db_creds.yaml** file. 
+### How many sales are coming from online? 
 
-**Step 2:** Created a method read_db_creds which read the credentials yaml file and returned a dictionary of the credentials.
-```
-def read_db_creds(self, yaml_path='db_creds.yaml'):
-    import yaml
-    with open(yaml_path, 'r') as f: 
-        creds = yaml.safe_load(f)
-    return creds 
-```
+|numbers_of_sales|product_quantity_count|location|
+|----------------|----------------------|--------|
+|93166|374047|Offline|
+|26957|107739|Web|
 
-**Step 3:** created a method init_db_engine which read the credentials from the return of read_db_creds and initialised and returned an sqlalchemy database engine.
-```
-def init_db_engine(self): 
-    from sqlalchemy import create_engine
-    creds = self.read_db_creds()
-    engine = create_engine(f"postgresql://{creds['RDS_USER']}:{creds['RDS_PASSWORD']}@{creds['RDS_HOST']}:{creds['RDS_PORT']}/{creds['RDS_DATABASE']}")
-    return engine 
-```
+### What Percentage of sales come through each type of store?
 
-**Step 4:** Used the engine from init_db_engine and created a method list_db_tables to list all the tables in the database to know which tables data can be extracted from.
-```
-def list_db_tables(self):
-    engine = self.init_db_engine()
-    with engine.connect() as conn:
-        tables = conn.execute(text("SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = 'public';")).fetchall()
-        table_names = [table[0] for table in tables]
-    return table_names
-```
+| store_type  | total_sales | percentage_total(%) |
+|-------------|-------------|---------------------|
+| Local       |  3440896.52 |             44.5577 |
+| Web portal  |  1726547.05 |             22.3578 |
+| Super Store |  1224293.65 |             15.8539 |
+| Mall Kiosk  |   698791.61 |             9.04896 |
+| Outlet      |   631804.81 |             8.18152 |
 
-**Step 5:** Developed a method called read_rds_table in DataExtractor class which extracted the database table to a pandas DataFrame.
-```
-def read_rds_table(self,engine,table_names):
-    table_name = [name for name in table_names if "user" in name][0]
-    with engine.connect() as conn:
-        result = conn.execute(text(f"SELECT * FROM {table_name};")).fetchall()
-        print_tables = conn.execute(text(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '{table_name}';")).fetchall()
-        [print(x) for x in print_tables]
-        df = pd.DataFrame(result)
-    return df
-```
+### Which month in each year produced the highest cost of sales?
 
-**Step 6:** Created a method called clean_user_data in the DataCleaning class which performed the cleaning of the user data.
-```
-def clean_user_data(self,user_df):
-    user_df.drop('index', axis=1, inplace=True)
-    user_df['date_of_birth'] = pd.to_datetime(user_df['date_of_birth'], format='%Y-%m-%d', errors='coerce')
-    user_df['join_date'] = pd.to_datetime(user_df['join_date'], format = '%Y-%m-%d', errors='coerce')
-    user_df.dropna(subset=['first_name', 'last_name', 'date_of_birth', 'email_address'], inplace=True)
-    user_df['phone_number'] = pd.to_numeric(user_df['phone_number'], errors='coerce')
-    user_df = user_df[pd.to_numeric(user_df['phone_number'], errors='coerce').notnull()]
-    user_df = user_df[pd.to_datetime(user_df['join_date'], errors='coerce').notnull()]
-    user_df.reset_index(drop=True, inplace=True)
-    return user_df
-```
+| total_sales | year | month |
+|-------------|------|-------|
+|    27936.77 | 1994 |     3 |
+|    27356.14 | 2019 |     1 |
+|    27091.67 | 2009 |     8 |
+|    26679.98 | 1997 |    11 |
+|    26310.97 | 2018 |    12 |
+|    26277.72 | 2019 |     8 |
+|    26236.67 | 2017 |     9 |
+|    25798.12 | 2010 |     5 |
+|    25648.29 | 1996 |     8 |
+|    25614.54 | 2000 |     1 |
 
-**Step 7:** Created a method in DatabaseConnector class called upload_to_db. This method takes in a Pandas DataFrame and table name to upload to as an argument.
-```
-def upload_to_db(self,cleaned_data,table_name):
+### What is the staff headcount? 
 
-    with open('pass.yaml', 'r') as t: # Load the credentials from the YAML file
-        pas = yaml.safe_load(t) 
-    new_engine = create_engine(f"postgresql+psycopg2://postgres:{pas['PASS']}@localhost:5432/sales_data")
-    cleaned_data.to_sql(table_name, new_engine, if_exists='replace', index=False)
-```
+|total_staff_numbers|country_code|
+|-------------------|------------|
+|12807|GB|
+|6054|DE|
+|1304|US|
+|325|NULL|
 
-**Step 8:** Used the upload_to_db method to store the data in my sales_Data database in a table named dim_users.
-```
-db_connector = DatabaseConnector()
-db_connector.upload_to_db(clean_card_df, table_name='dim_card_details')
-```
+### Which German type store is selling the most?
 
-### Task 4: Extracted,cleaned and uploaded card details into sales_data database which were stored in a PDF document in an AWS S3 bucket using Tabula.
-- Installed the package **Tabular-py** using pip on bash
-- Created a method into the **DataExtractor** Class called **retrieve_pdf_data** to extract details.
-```
-def retrieve_pdf_data(self,link="https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf"):
-    pdf_dfs = tabula.read_pdf(link,pages='all')
-    pdf_df = pd.concat(pdf_dfs)  #as tabula returns a list of pandas dataframe which is 1 df every page of the pdf
-    return pdf_df   #we use concat to merge all the ist of dfs into a single df
-```
-- Created a method called **clean_card_data** in **DataCleaning** Class.
-```
-def clean_card_data(self,card_df):
-    
-    #dropping any rows will null values
-    card_df = card_df.dropna()
-    #removing any columns with erroneous values
-    card_df = card_df[~card_df['card_number'].astype(str).str.contains('[^0-9]')]
-    card_df = card_df[~card_df['card_provider'].str.contains('[^a-zA-Z0-9 /]')]
-    #cleaing up any formatting issues in expiry_date column
-    card_df['expiry_date'] = pd.to_datetime(card_df['expiry_date'], format='%m/%y', errors='coerce')
-    card_df = card_df.dropna()
-    # Clean up formatting errors in date_payment_confirmed column
-    card_df['date_payment_confirmed'] = pd.to_datetime(card_df['date_payment_confirmed'], format='%Y-%m-%d', errors='coerce')
-    card_df = card_df.dropna()
-    # Convert the 'card_number' column to the Int64 data type
-    card_df['card_number'] = pd.to_numeric(card_df['card_number'], errors='coerce').astype('Int64')
-    #convert card_provider column to category data type
-    card_df['card_provider'] = card_df['card_provider'].fillna('Unknown').astype('category')
+|total_sales|store_type|country_code|
+|-----------|----------|------------|
+|198373.57000000027|Outlet|DE|
+|247634.20000000042|Mall Kiosk|DE|
+|384625.02999999863|Super Store|DE|
+|1109909.5899999605|Local|DE|
 
-    return card_df
-```
-- Uploaded to my **sales_data** database as a table called **dim_card_details**
+### How quickly is the company making sales?
 
-### Task 5: 
+|year|actual_time_taken|
+|----|-----------------|
+|2013|{""hours"":2,""minutes"":17,""seconds"":15,""milliseconds"":655.442}|
+|1993|{""hours"":2,""minutes"":15,""seconds"":40,""milliseconds"":129.515}|
+|2002|{""hours"":2,""minutes"":13,""seconds"":49,""milliseconds"":478.228}|
+|2008|{""hours"":2,""minutes"":13,""seconds"":3,""milliseconds"":532.442}|
+|2022|{""hours"":2,""minutes"":13,""seconds"":2,""milliseconds"":3.698}|
+|1995|{""hours"":2,""minutes"":12,""seconds"":59,""milliseconds"":84.514}|
+|2016|{""hours"":2,""minutes"":12,""seconds"":58,""milliseconds"":99.167}|
+|2011|{""hours"":2,""minutes"":12,""seconds"":29,""milliseconds"":826.536}|
+|2020|{""hours"":2,""minutes"":12,""seconds"":10,""milliseconds"":518.667}|
+|2021|{""hours"":2,""minutes"":11,""seconds"":48,""milliseconds"":370.733}|
